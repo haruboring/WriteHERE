@@ -1,1 +1,1 @@
-import recursive.agent.prompts.search_agent.main
+import agent.prompts.search_agent.main

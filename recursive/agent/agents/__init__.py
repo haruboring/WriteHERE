@@ -1,1 +1,1 @@
-import recursive.agent.agents.regular
+import agent.agents.regular

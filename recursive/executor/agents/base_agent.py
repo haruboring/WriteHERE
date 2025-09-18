@@ -1,6 +1,6 @@
-from recursive.executor.actions import ActionExecutor
-from recursive.executor.actions.base_action import BaseAction
-from recursive.executor.schema import AgentReturn
+from executor.actions import ActionExecutor
+from executor.actions.base_action import BaseAction
+from executor.schema import AgentReturn
 
 
 class BaseAgent:
@@ -14,8 +14,7 @@ class BaseAgent:
             the llm.
     """
 
-    def __init__(self, llm, action_executor: ActionExecutor,
-                 protocol: object) -> None:
+    def __init__(self, llm, action_executor: ActionExecutor, protocol: object) -> None:
         self._llm = llm
         self._action_executor = action_executor
         self._protocol = protocol

@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-from recursive.agent.prompts.base import PromptTemplate
-from recursive.agent.prompts.base import prompt_register
+from agent.prompts.base import PromptTemplate, prompt_register
 from datetime import datetime
+
 now = datetime.now()
+
 
 @prompt_register.register_module()
 class ReportSearchOnlyUpdate(PromptTemplate):
     def __init__(self) -> None:
         system_message = ""
-        
+
         content_template = """
 results of search and analysis tasks completed:
 ```

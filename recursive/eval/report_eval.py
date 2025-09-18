@@ -1,21 +1,20 @@
-import argparse
-import re
-#coding:utf8
-
-from typing import Dict, List
-from abc import ABC, abstractmethod
-from overrides import overrides
-import random
-import json
-from recursive.llm.llm import OpenAIApiProxy
-from copy import deepcopy
-from pprint import pprint
-import argparse
-from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
-
 from tqdm import tqdm
+
 import numpy as np
 
+import argparse
+import json
+import random
+import re
+from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
+from copy import deepcopy
+from llm.llm import OpenAIApiProxy
+from overrides import overrides
+from pprint import pprint
+from typing import Dict, List
+
+# coding:utf8
 
 
 def parse_hierarchy_tags_result(res, tags):
@@ -27,8 +26,9 @@ def parse_hierarchy_tags_result(res, tags):
         res = parse_tag_result(res, tag)
     return res
 
+
 def parse_tag_result(content, tag):
-    start = False 
+    start = False
     results = []
     for line in content.split("\n"):
         line = line.strip()
@@ -50,8 +50,8 @@ def parse_tag_result(content, tag):
         match_res = "\n".join(match_res)
         return match_res
     return ""
-        
-            
+
+
 criteria_description = """
 Criteria Description
 Broad Coverage: Does the article provide an in-depth exploration of the topic and have good coverage?
@@ -126,24 +126,26 @@ def define_args():
     parser.add_argument("--model", type=str, required=True)
     parser.add_argument("--parallel", type=int, default=20)
 
-    
     return parser
+
 
 def prcess_article(item):
     return item["article"]
+
 
 def process_one(item, model):
     cnt = 0
     while cnt < 100:
         llm_result = call_llm(
-            system_message = None,
-            prompt = prompt_template.format(article = item["to_eval_article"], criteria_description = criteria_description,
-                                            question=item["prompt"]),
-            parse_arg_dict = {},
-            history_message = None,
-            temperature = 0.2,
-            model = model,
-            overwrite_cache = True
+            system_message=None,
+            prompt=prompt_template.format(
+                article=item["to_eval_article"], criteria_description=criteria_description, question=item["prompt"]
+            ),
+            parse_arg_dict={},
+            history_message=None,
+            temperature=0.2,
+            model=model,
+            overwrite_cache=True,
         )
         try:
             text = llm_result["original"].strip()
@@ -162,10 +164,11 @@ def process_one(item, model):
         except:
             cnt += 1
             import traceback
+
             print(traceback.format_exc())
             print("error for {}".format(llm_result))
             continue
-        
+
         assert len(result) == 4
         item["eval_result"] = result
         return item
@@ -173,7 +176,7 @@ def process_one(item, model):
     return None
 
 
-def call_llm(system_message, prompt, parse_arg_dict, history_message = None, **other_inner_args):
+def call_llm(system_message, prompt, parse_arg_dict, history_message=None, **other_inner_args):
     llm = OpenAIApiProxy()
     if system_message:
         message = [
@@ -184,29 +187,17 @@ def call_llm(system_message, prompt, parse_arg_dict, history_message = None, **o
     if history_message is not None:
         message.append(history_message)
     message.append({"role": "user", "content": prompt})
-    
+
     model = other_inner_args.pop("model", "gpt-4o")
     print("Use {}".format(model))
-    
-    
+
     if "claude" in model:
-        resp = llm.call(messages = message,
-                        model=model,
-                        verbose=False,
-                        no_cache = True,
-                        **other_inner_args)["content"][0]["text"]
+        resp = llm.call(messages=message, model=model, verbose=False, no_cache=True, **other_inner_args)["content"][0]["text"]
     else:
-        resp = llm.call(messages = message,
-                        model=model,
-                        verbose=False,
-                        no_cache = True,
-                        **other_inner_args)[0]['message']['content']
+        resp = llm.call(messages=message, model=model, verbose=False, no_cache=True, **other_inner_args)[0]["message"]["content"]
 
     assert isinstance(parse_arg_dict, dict)
-    result = {
-        "original": resp,
-        "result": resp
-    }
+    result = {"original": resp, "result": resp}
     for key, value in parse_arg_dict.items():
         result[key] = parse_hierarchy_tags_result(resp, value).strip()
     return result
@@ -215,21 +206,21 @@ def call_llm(system_message, prompt, parse_arg_dict, history_message = None, **o
 def main():
     parser = define_args()
     args = parser.parse_args()
-    
+
     custom_format = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>"
-    
+
     items = read_jsonl(args.filename)
     for item in items:
         item["to_eval_article"] = prcess_article(item)
-        
+
     print(len(items))
     output_f = open(args.output_filename, "w", encoding="utf8")
     num_total, num_none, num_exception, num_success = 0, 0, 0, 0
     all_results = []
     thread_num = args.parallel
 
-    keys = ["broad coverage", "novelty", "relevance and focus", "depth of exploration"]    
-    aggregates = {key: []  for key in keys}
+    keys = ["broad coverage", "novelty", "relevance and focus", "depth of exploration"]
+    aggregates = {key: [] for key in keys}
     with ThreadPoolExecutor(max_workers=min(len(items), thread_num)) as executor:
         future_to_conv = {executor.submit(process_one, item, args.model): item for item in items}
         for future in tqdm(as_completed(future_to_conv), total=len(items), desc="generate_trace"):
@@ -240,28 +231,28 @@ def main():
                     aggregates[key].append(ret["eval_result"][key])
                 all_results.append(ret)
                 if ret:
-                    output_f.write(json.dumps(ret, ensure_ascii=False) + '\n')
+                    output_f.write(json.dumps(ret, ensure_ascii=False) + "\n")
                     output_f.flush()
                     num_success += 1
                 else:
                     print("Get None", flush=True)
                     num_none += 1
-                print(f'Stat: {num_total=}, {num_none=}, {num_exception=}, {num_success=}')
+                print(f"Stat: {num_total=}, {num_none=}, {num_exception=}, {num_success=}")
             except TimeoutError:
                 print(f"Timeout occurred for example")
                 num_exception += 1
             except Exception as e:
                 exception_feature = future_to_conv[future]
                 import traceback
-                print(f'{exception_feature=}, the exception is: {traceback.format_exc()}')
+
+                print(f"{exception_feature=}, the exception is: {traceback.format_exc()}")
                 num_exception += 1
-    
+
     output_f.close()
-    
+
     print("AVG")
     for key, values in aggregates.items():
         print(key, "{:.3f}".format(np.mean([float(v) for v in values])), flush=True)
-        
-                
-   
+
+
 main()

@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-from recursive.agent.prompts.base import PromptTemplate
-from recursive.agent.prompts.base import prompt_register
+from agent.prompts.base import PromptTemplate, prompt_register
 from datetime import datetime
+
 now = datetime.now()
 
-        
-        
+
 @prompt_register.register_module()
 class SearchAgentENPrompt(PromptTemplate):
     def __init__(self) -> None:
@@ -91,11 +90,9 @@ In the last round, the search engine returned:
 Complete this round (round {to_run_turn}) according to requirements
 """.strip()
         super().__init__(system_message, content_template)
-        
-        
-        
-        
+
 
 if __name__ == "__main__":
-    from recursive.agent.agent_base import DummyRandomPlanningAgent
+    from agent.agent_base import DummyRandomPlanningAgent
+
     agent = DummyRandomPlanningAgent()
